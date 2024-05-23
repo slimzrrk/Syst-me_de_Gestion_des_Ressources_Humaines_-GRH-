@@ -1,0 +1,14 @@
+const config = require('../config/config');
+const mongoose = require('mongoose');
+const db = {};
+mongoose.Promise = global.Promise;
+mongoose.set('strictQuery',false);
+db.mongoose = mongoose;
+db.url = config.DB_URL;
+db.posts= require('../api/models/post.model')(mongoose);
+db.employee= require('../api/models/employeeModel')(mongoose);
+db.attendance= require('../api/models/attendanceModel')(mongoose);
+db.absence= require('../api/models/absenceModel')(mongoose);
+db.leave= require('../api/models/leaveModel')(mongoose);
+db.user= require('../api/models/userModel')(mongoose);
+module.exports = db;
