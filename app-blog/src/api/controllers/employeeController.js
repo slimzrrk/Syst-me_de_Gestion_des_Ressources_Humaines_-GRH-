@@ -1,83 +1,41 @@
-const { employee } = require('../../database/db.config');
+const mongoose = require('mongoose');
 const Employee = require('../models/employeeModel');
+const Leave = require('../models/leaveModel');
+const Absence = require('../models/absenceModel');
+const Attendance = require('../models/attendanceModel');
+const crudController = require('./crudController');
+const asyncHandler = require('../middlewares/asyncHandler');
 
+const crud = crudController(Employee, {
+  fields: ['nom', 'prenom', 'email', 'poste', 'departement', 'dateEmbauche', 'soldeConges'],
+  messages: {
+    created: 'Employé créé avec succès.',
+    updated: "L'employé a été mis à jour avec succès.",
+    deleted: 'Employé supprimé avec succès.',
+    notFound: 'Employé introuvable.',
+  },
+});
 
+exports.createEmployee = crud.create;
+exports.findAll = crud.findAll;
+exports.findOne = crud.findOne;
+exports.update = crud.update;
 
-exports.createEmployee = (req, res) => {
-    const { nom, prenom, email, poste, departement, dateEmbauche } = req.body;
-    const newEmployee = new Employee({
-        nom: nom,
-        prenom: prenom,
-        email: email,
-        poste: poste,
-        departement: departement,
-        dateEmbauche: dateEmbauche
-    });
-    newEmployee.save().then((data) => {
-        res.status(200).send({
-            message: 'Employé créé avec succès',
-            redirectTo: '/employees' 
-        });
-    }).catch(err => {
-        console.error("Erreur lors de la création de l'employé:", err);
-        res.status(500).send({ message: "Une erreur s'est produite lors de la création de l'employé." });
-    });
-};
-exports.findAll = (req, res) => {
-    Employee.find({
-    }).then((data) => {
-        res.send(data);
-    }).catch((err) => {
-        console.log(err);
-    });
-};
-exports.findOne = (req, res) => {
-    const id = req.params.id;
-    if (!id) {
-        res.status(400).send({ message: "content is required " });
-    }
-    Employee.findById(id).then((data) => {
-        res.send(data);
-    }).catch((err) => {
-        console.log(err);
-    });
-};
-exports.delete = (req, res) => {
-    const id = req.params.id;
-    if (!id) {
-        res.status(400).send({ message: "content is required " });
-    }
-    Employee.findByIdAndDelete(id).then((data) => {
-        if (!data) {
-            res.status(404).send({ message: "Post not found " });
-        }
-        res.status(200).send({ message: "Post was successfull deleted " });
-    })
-};
-
-
-exports.update = (req, res) => {
-    const id = req.params.id;
-    const { nom, prenom, email, poste, departement, dateEmbauche } = req.body;
-    if (!id) {
-        return res.status(400).send({ message: "L'identifiant est requis." });
-    }
-    Employee.findByIdAndUpdate(id, {
-        nom,
-        prenom,
-        email,
-        poste,
-        departement,
-        dateEmbauche
-    }, { new: true }) 
-        .then(updatedEmployee => {
-            if (!updatedEmployee) {
-                return res.status(404).send({ message: "L'employé n'a pas été trouvé." });
-            }
-            res.status(200).send({ message: "L'employé a été mis à jour avec succès.", updatedEmployee });
-        })
-        .catch(err => {
-            console.error("Erreur lors de la mise à jour de l'employé:", err);
-            res.status(500).send({ message: "Une erreur s'est produite lors de la mise à jour de l'employé." });
-        });
-};
+// Supprimer un employé supprime aussi ses congés, absences et pointages
+// (sinon ces enregistrements resteraient orphelins dans les listes).
+exports.delete = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: 'Identifiant invalide.' });
+  }
+  const employee = await Employee.findByIdAndDelete(id);
+  if (!employee) {
+    return res.status(404).json({ message: 'Employé introuvable.' });
+  }
+  await Promise.all([
+    Leave.deleteMany({ employe: id }),
+    Absence.deleteMany({ employe: id }),
+    Attendance.deleteMany({ employe: id }),
+  ]);
+  res.json({ message: 'Employé supprimé avec succès, ainsi que ses congés, absences et pointages.' });
+});

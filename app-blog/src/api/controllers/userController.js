@@ -1,64 +1,35 @@
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
-var refreshTokens={}
-exports.login = (req, res, next) => {
-  User.findOne({
-    username: req.body.username,
-  }).exec()
-    .then(userInfo => {
-      console.log('utilisateur', userInfo);
-      if (userInfo !== null) {
-        if (bcrypt.compareSync(req.body.password, userInfo.password)) {
-          const secretKey = req.app.get('secretKey');
-          if (!secretKey) {
-            throw new Error('La clé secrète n\'est pas définie');
-          }
+const config = require('../../config/config');
+const asyncHandler = require('../middlewares/asyncHandler');
 
-          const token = jwt.sign({
-            user: userInfo,
-            id: userInfo._id,
-          }, secretKey, { expiresIn: '24h' });
+const signToken = (user) => jwt.sign(
+  { id: user._id, username: user.username }, // jamais le mot de passe dans le jeton
+  config.JWT_SECRET,
+  { expiresIn: config.JWT_EXPIRES_IN },
+);
 
-          const refreshToken = jwt.sign({
-            id: userInfo._id,
-          }, secretKey, { expiresIn: '24h' });
-
-          refreshTokens[refreshToken] = userInfo._id;
-
-          res.status(200).json({
-            status: 200,
-            message: "Utilisateur trouvé !!!",
-            data: {
-              utilisateur: userInfo,
-              jetonAcces: token,
-              refreshToken: refreshToken
-            }
-          });
-        } else {
-          res.status(401).json({ status: 401, message: "Mot de passe invalide !!!", data: null });
-        }
-      } else {
-        res.status(401).json({ status: 401, message: "Nom d'utilisateur invalide !!!", data: null });
-      }
-    })
-    .catch(err => next(err));
-};
-
-exports.register = async (req, res) => {
+exports.register = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-
-  try {
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({ message: "Nom d'utilisateur déjà utilisé" });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, password: hashedPassword });
-    await newUser.save();
-
-    res.status(201).json({ message: "Utilisateur créé avec succès" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  if (await User.exists({ username })) {
+    return res.status(409).json({ message: "Nom d'utilisateur déjà utilisé." });
   }
-};
+  const user = await User.create({ username, password }); // haché par le modèle
+  res.status(201).json({ message: 'Utilisateur créé avec succès.', data: user });
+});
+
+exports.login = asyncHandler(async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username: String(username || '') });
+  if (!user || !(await user.checkPassword(password))) {
+    // Même message dans les deux cas : on ne révèle pas si le compte existe.
+    return res.status(401).json({ message: "Nom d'utilisateur ou mot de passe incorrect." });
+  }
+  res.json({
+    message: 'Connexion réussie.',
+    token: signToken(user),
+    user: { id: user._id, username: user.username },
+  });
+});
+
+exports.me = (req, res) => res.json({ user: { id: req.user.id, username: req.user.username } });

@@ -1,99 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import api, { errorMessage } from '../api';
+import Alert from '../components/Alert';
+import EmployeeSelect from '../components/EmployeeSelect';
 
 const UpdateAbsencePage = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const [absenceData, setAbsenceData] = useState({
-    date: '',
-    motif: '',
-    heuresManquees: '',
-    employe: ''
-  });
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { id } = useParams();
+  const [absenceData, setAbsenceData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchAbsenceData();
-    fetchEmployees();
-  }, []);
-
-  const fetchAbsenceData = async () => {
-    try {
-      const response = await axios.get(`http://localhost:3001/api/absence/${id}`);
-      const fetchedAbsenceData = response.data;
-      setAbsenceData({
-        ...fetchedAbsenceData,
-        date: fetchedAbsenceData.date.split('T')[0]
-      });
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching absence data:', error);
-      setError(error.message);
-      setLoading(false);
-    }
-  };
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await axios.get('http://localhost:3001/api/employee');
-      setEmployees(response.data);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-    }
-  };
+    api.get(`/absence/${id}`)
+      .then(({ data }) => setAbsenceData({
+        date: data.date.split('T')[0], motif: data.motif, heuresManquees: data.heuresManquees, employe: data.employe,
+      }))
+      .catch((err) => setError(errorMessage(err)));
+  }, [id]);
 
   const handleSub = async (e) => {
     e.preventDefault();
+    setError('');
     try {
-      await axios.put(`http://localhost:3001/api/absence/${id}`, absenceData);
-      console.log('Absence updated successfully.');
+      await api.put(`/absence/${id}`, absenceData);
       navigate('/absences');
-    } catch (error) {
-      console.error('Something went wrong!', error);
-      setError(error.message);
+    } catch (err) {
+      setError(errorMessage(err));
     }
   };
 
-  const handleChange = (e) => {
-    setAbsenceData({ ...absenceData, [e.target.name]: e.target.value });
-  };
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const handleChange = (e) => setAbsenceData({ ...absenceData, [e.target.name]: e.target.value });
 
   return (
     <div>
       <h2>Modifier une absence</h2>
-      <form onSubmit={handleSub}>
-        <label>
-          Date:
-          <input type="date" name="date" value={absenceData.date} onChange={handleChange} />
-        </label>
-        <label>
-          Motif:
-          <input type="text" name="motif" value={absenceData.motif} onChange={handleChange} />
-        </label>
-        <label>
-          Heures manquées:
-          <input type="number" name="heuresManquees" value={absenceData.heuresManquees} onChange={handleChange} />
-        </label>
-        <label>
-          Employé:
-          <select name="employe" value={absenceData.employe} onChange={handleChange}>
-            {employees.map(employee => (
-              <option key={employee._id} value={employee._id}>
-                {employee.nom} {employee.prenom}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        
-        <button type="submit">Modifier</button>
-      </form>
+      <div className="card form-card">
+        <Alert>{error}</Alert>
+        {!absenceData ? (!error && <p>Chargement…</p>) : (
+          <form onSubmit={handleSub}>
+            <label>Employé<EmployeeSelect value={absenceData.employe} onChange={handleChange} /></label>
+            <label>Date<input type="date" name="date" value={absenceData.date} onChange={handleChange} required /></label>
+            <label>Motif<input type="text" name="motif" value={absenceData.motif} onChange={handleChange} required /></label>
+            <label>Heures manquées<input type="number" name="heuresManquees" min="0" max="24" step="0.5" value={absenceData.heuresManquees} onChange={handleChange} required /></label>
+            <div className="form-actions">
+              <Link to="/absences" className="button-link btn-secondary">Annuler</Link>
+              <button type="submit">Enregistrer</button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 };

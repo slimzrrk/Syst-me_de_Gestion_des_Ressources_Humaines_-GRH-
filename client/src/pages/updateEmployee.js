@@ -1,91 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import api, { errorMessage } from '../api';
+import Alert from '../components/Alert';
 
 const UpdateEmployeePage = () => {
-    const navigate = useNavigate();
-    const { id } = useParams();
-    const [employeeData, setEmployeeData] = useState({
-        nom: '',
-        prenom: '',
-        email: '',
-        poste:'',
-        departement: '',
-        dateEmbauche: ''
-    });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [employeeData, setEmployeeData] = useState(null);
+  const [error, setError] = useState('');
 
-    useEffect(() => {
-        fetchEmployeeData();
-    }, []);
+  useEffect(() => {
+    api.get(`/employee/${id}`)
+      .then(({ data }) => setEmployeeData({
+        nom: data.nom, prenom: data.prenom, email: data.email,
+        poste: data.poste, departement: data.departement, dateEmbauche: data.dateEmbauche,
+      }))
+      .catch((err) => setError(errorMessage(err)));
+  }, [id]);
 
-    const fetchEmployeeData = async () => {
-        try {
-            const response = await axios.get(`http://localhost:3001/api/employee/${id}`);
-            const employeeData = response.data;
-            setEmployeeData(employeeData);
-            setLoading(false);
-        } catch (error) {
-            console.error('Error fetching employee data:', error);
-            setError(error.message);
-            setLoading(false);
-        }
-    };
+  const handleSub = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await api.put(`/employee/${id}`, employeeData);
+      navigate('/employees');
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
 
-    const handleSub = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await axios.put(`http://localhost:3001/api/employee/${id}`, employeeData);
-            console.log('Response:', response.data);
-            window.location.href = '/employees';
-        } catch (error) {
-            console.error('Something went wrong!', error);
-            setError(error.message);
-        }
-    };
+  const handleChange = (e) => setEmployeeData({ ...employeeData, [e.target.name]: e.target.value });
 
-    const handleChange = (e) => {
-        setEmployeeData({ ...employeeData, [e.target.name]: e.target.value });
-    };
-
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
-
-    return (
-        <div>
-            <h2>Modifier un employé</h2>
-            <form onSubmit={handleSub}>
-                <label>
-                    Nom:
-                    <input type="text" name="nom" value={employeeData.nom} onChange={handleChange} />
-                </label>
-                <label>
-                    Prénom:
-                    <input type="text" name="prenom" value={employeeData.prenom} onChange={handleChange} />
-                </label>
-                <label>
-                    Email:
-                    <input type="email" name="email" value={employeeData.email} onChange={handleChange} />
-                </label>
-                <label>
-                    Poste:
-                    <input type="text" name="poste" value={employeeData.poste} onChange={handleChange} />
-                </label>
-                <label>
-                    Département:
-                    <input type="text" name="departement" value={employeeData.departement} onChange={handleChange} />
-                </label>
-                <label>
-                    Date d'embauche:
-                    <input type="date" name="dateEmbauche" value={employeeData.dateEmbauche} onChange={handleChange} />
-                </label>
-                
-                
-                <button type="submit">Modifier</button>
-            </form>
-        </div>
-    );
+  return (
+    <div>
+      <h2>Modifier un employé</h2>
+      <div className="card form-card">
+        <Alert>{error}</Alert>
+        {!employeeData ? (!error && <p>Chargement…</p>) : (
+          <form onSubmit={handleSub}>
+            <label>Nom<input type="text" name="nom" value={employeeData.nom} onChange={handleChange} required /></label>
+            <label>Prénom<input type="text" name="prenom" value={employeeData.prenom} onChange={handleChange} required /></label>
+            <label>Email<input type="email" name="email" value={employeeData.email} onChange={handleChange} required /></label>
+            <label>Poste<input type="text" name="poste" value={employeeData.poste} onChange={handleChange} required /></label>
+            <label>Département<input type="text" name="departement" value={employeeData.departement} onChange={handleChange} required /></label>
+            <label>Date d'embauche<input type="date" name="dateEmbauche" value={employeeData.dateEmbauche} onChange={handleChange} required /></label>
+            <div className="form-actions">
+              <Link to="/employees" className="button-link btn-secondary">Annuler</Link>
+              <button type="submit">Enregistrer</button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default UpdateEmployeePage;

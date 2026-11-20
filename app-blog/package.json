@@ -1,21 +1,14 @@
 {
-  "name": "app-blog",
+  "name": "grh-api",
   "version": "1.0.0",
-  "description": "application crud Node JS express et mongoo",
+  "description": "API REST du système de gestion des ressources humaines (Node.js, Express, MongoDB)",
   "private": true,
-  "proxy": "http://localhost/3001",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
-  "keywords": [
-    "mongoDB",
-    "express",
-    "nodeJS",
-    "cors",
-    "crud"
-  ],
+  "keywords": ["grh", "rh", "mongodb", "express", "nodejs", "jwt", "crud"],
   "author": "Chouchane MH",
   "license": "MIT",
   "dependencies": {
@@ -24,7 +17,9 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.3",
+    "mongoose": "^8.0.3"
+  },
+  "devDependencies": {
     "nodemon": "^3.1.0"
   }
 }

@@ -1,78 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import api, { errorMessage } from '../api';
+import Alert from '../components/Alert';
+import EmployeeSelect from '../components/EmployeeSelect';
 
-const AddLeavePage = ({ setLeaves }) => {
+const AddLeavePage = () => {
   const navigate = useNavigate();
+  const [error, setError] = useState('');
   const [newLeaveData, setNewLeaveData] = useState({
-    type: '',
-    dateDebut: '',
-    dateFin: '',
-    statut: 'En attente',
-    employe: '',
-    dateDemande: new Date().toISOString().split('T')[0]
+    type: '', dateDebut: '', dateFin: '', employe: '',
   });
-
-  const [employees, setEmployees] = useState([]);
-
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/employee');
-        setEmployees(response.data);
-      } catch (error) {
-        console.error('Erreur lors de la récupération des employés:', error);
-      }
-    };
-
-    fetchEmployees();
-  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewLeaveData({ ...newLeaveData, [name]: value });
   };
 
-  const handleAddLeave = async () => {
+  const handleAddLeave = async (e) => {
+    e.preventDefault();
+    setError('');
     try {
-      const response = await axios.post('http://localhost:3001/api/leave', newLeaveData);
-      const newLeave = response.data;
-      window.location.href = '/leave';
-      setLeaves(prevLeaves => [newLeave, ...prevLeaves]);
-
-    } catch (error) {
-      console.error('Erreur lors de l\'ajout de la demande de congé:', error);
+      await api.post('/leave', newLeaveData); // statut « En attente » et date de demande fixés par l'API
+      navigate('/leave');
+    } catch (err) {
+      setError(errorMessage(err));
     }
   };
 
   return (
     <div>
       <h2>Ajouter une demande de congé</h2>
-      <form onSubmit={handleAddLeave}>
-        <label>
-          Type:
-          <input type="text" name="type" value={newLeaveData.type} onChange={handleInputChange} />
-        </label>
-        <label>
-          Date de début:
-          <input type="date" name="dateDebut" value={newLeaveData.dateDebut} onChange={handleInputChange} />
-        </label>
-        <label>
-          Date de fin:
-          <input type="date" name="dateFin" value={newLeaveData.dateFin} onChange={handleInputChange} />
-        </label>
-        <label>
-          Employé:
-          <select name="employe" value={newLeaveData.employe} onChange={handleInputChange}>
-            <option value="">Sélectionnez un employé</option>
-            {employees.map((employee) => (
-              <option key={employee._id} value={employee._id}>{employee.nom} {employee.prenom}</option>
-            ))}
-          </select>
-        </label>
-        <input type="hidden" name="statut" value="En attente" />
-        <button type="submit">Ajouter</button>
-      </form>
+      <div className="card form-card">
+        <Alert>{error}</Alert>
+        <form onSubmit={handleAddLeave}>
+          <label>Employé<EmployeeSelect value={newLeaveData.employe} onChange={handleInputChange} /></label>
+          <label>Type<input type="text" name="type" value={newLeaveData.type} onChange={handleInputChange} placeholder="Annuel, maladie, sans solde…" required /></label>
+          <label>Date de début<input type="date" name="dateDebut" value={newLeaveData.dateDebut} onChange={handleInputChange} required /></label>
+          <label>Date de fin<input type="date" name="dateFin" value={newLeaveData.dateFin} min={newLeaveData.dateDebut || undefined} onChange={handleInputChange} required /></label>
+          <div className="form-actions">
+            <Link to="/leave" className="button-link btn-secondary">Annuler</Link>
+            <button type="submit">Ajouter</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

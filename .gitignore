@@ -1,0 +1,14 @@
+# Dépendances (réinstallées avec npm install)
+node_modules/
+
+# Variables d'environnement : seul .env.example est versionné
+.env
+.env.*
+!.env.example
+
+# Build et fichiers système
+client/build/
+.DS_Store
+.vscode/
+.idea/
+npm-debug.log*

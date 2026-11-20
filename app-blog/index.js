@@ -1,29 +1,29 @@
-const express=require('express');
-require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const config = require('./src/config/config');
 const database = require('./src/database/db.config');
-const employee = require('./src/api/models/employeeModel');
-//const express=require('express');
-const app=express();
-const cors=require('cors');
-app.set('secretKey', '{employee.id}');
-app.use(cors());
-app.use(express.urlencoded({ extended: true}));
+const errorHandler = require('./src/api/middlewares/errorHandler');
+
+const app = express();
+app.use(cors({ origin: config.CLIENT_URL }));
 app.use(express.json());
-database.mongoose.connect(database.url, {
-    useNewUrlParser: true,
-    useUnifiedTopology:true
-    }
-    ).then(()=>{
-        console.log('connected to database'); 
-       })
-       .catch(err => {
-           console.log(err);
-       }); 
-       ;
-app.get('/', (req, res)=>{
-    res.send({message: 'Hello, Word!'});
-})
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/', (req, res) => res.json({ message: 'API GRH opérationnelle.' }));
 require('./src/api/routes/routes')(app);
-app.listen(process.env.PORT, ()=>{
-    console.log ('listening on port', process.env.PORT);
-});
+app.use((req, res) => res.status(404).json({ message: 'Route introuvable.' }));
+app.use(errorHandler);
+
+if (require.main === module) {
+  database.connect()
+    .then(() => {
+      console.log('Connecté à MongoDB');
+      app.listen(config.PORT, () => console.log(`API GRH en écoute sur http://localhost:${config.PORT}`));
+    })
+    .catch((err) => {
+      console.error('Connexion à MongoDB impossible :', err.message);
+      process.exit(1);
+    });
+}
+
+module.exports = app;

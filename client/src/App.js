@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import NavbarComponent from './components/NavbarComponent';
+import ProtectedRoute from './components/ProtectedRoute';
 import HomePage from './pages/HomePage';
 import EmployeePage from './pages/EmployeePage';
 import LeavePage from './pages/LeavePage';
@@ -8,45 +9,46 @@ import AbsencePage from './pages/AbsencePage';
 import AttendancePage from './pages/AttendancePage';
 import AuthPage from './pages/AuthPage';
 import RegisterPage from './pages/RegisterPage';
-import EmployeeComponent from './components/EmployeeComponent';
 import AddEmployeePage from './pages/AddEmployeePage';
 import AddLeavePage from './pages/AddLeavePage';
 import AddAbsencePage from './pages/AddAbsencePage';
-import AddAttendancePage from './pages/AddAttendancePage ';
+import AddAttendancePage from './pages/AddAttendancePage';
 import UpdateAttendancePage from './pages/updateAttendancePage';
 import UpdateAbsencePage from './pages/updateAbsencePage';
 import UpdateEmployeePage from './pages/updateEmployee';
 import UpdateLeavePage from './pages/updateLeavePAge';
 
-const App = () => {
-  return (
-    <Router>
-      <div>
-        <NavbarComponent />
-        <Routes>
-          <Route exact path="/" element={<HomePage/>} />
-          <Route path="/employees" element={<EmployeePage/>} />
-          <Route path="/leave" element={<LeavePage/>} />
-          <Route path="/absences" element={<AbsencePage/>} />
-          <Route path="/attendance" element={<AttendancePage/>} />
-          <Route path="/auth" element={<AuthPage/>} />
-          <Route path="/register" element={<RegisterPage/>} />
-          <Route path="/addEmployee" element={<AddEmployeePage />} />
-          <Route path="/addLeave" element={<AddLeavePage />} />
-          <Route path="/addAbsence" element={<AddAbsencePage />} />
-          <Route path="/addAttendance" element={<AddAttendancePage />} />
+// Pages accessibles uniquement après connexion
+const privateRoutes = [
+  ['/', HomePage],
+  ['/employees', EmployeePage],
+  ['/leave', LeavePage],
+  ['/absences', AbsencePage],
+  ['/attendance', AttendancePage],
+  ['/addEmployee', AddEmployeePage],
+  ['/addLeave', AddLeavePage],
+  ['/addAbsence', AddAbsencePage],
+  ['/addAttendance', AddAttendancePage],
+  ['/updateEmployee/:id', UpdateEmployeePage],
+  ['/updateLeave/:id', UpdateLeavePage],
+  ['/updateAttendance/:id', UpdateAttendancePage],
+  ['/updateAbsence/:id', UpdateAbsencePage],
+];
 
-          <Route path="/updateEmployee/:id" element={<UpdateEmployeePage />} />
-          <Route path="/updateLeave/:id" element={<UpdateLeavePage />} />
-          <Route path="/updateAttendance/:id" element={<UpdateAttendancePage />} />
-          <Route path="/updateAbsence/:id" element={<UpdateAbsencePage />} />
-          
-
-          
-        </Routes>
-      </div>
-    </Router>
-  );
-};
+const App = () => (
+  <Router>
+    <NavbarComponent />
+    <main className="container">
+      <Routes>
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        {privateRoutes.map(([path, Page]) => (
+          <Route key={path} path={path} element={<ProtectedRoute><Page /></ProtectedRoute>} />
+        ))}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </main>
+  </Router>
+);
 
 export default App;

@@ -1,110 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import api, { errorMessage } from '../api';
+import Alert from '../components/Alert';
+import EmployeeSelect from '../components/EmployeeSelect';
+
+const STATUTS = ['En attente', 'Approuvé', 'Rejeté'];
+const toInputDate = (value) => (value ? value.split('T')[0] : '');
 
 const UpdateLeavePage = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const [leaveData, setLeaveData] = useState({
-    type: '',
-    dateDebut: '',
-    dateFin: '',
-    statut: '',
-    employe: '',
-    dateDemande: ''
-  });
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { id } = useParams();
+  const [leaveData, setLeaveData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchLeaveData();
-    fetchEmployees();
-  }, []);
-
-  const fetchLeaveData = async () => {
-    try {
-      const response = await axios.get(`http://localhost:3001/api/leave/${id}`);
-      const fetchedLeaveData = response.data;
-      setLeaveData({
-        ...fetchedLeaveData,
-        dateDebut: fetchedLeaveData.dateDebut.split('T')[0],
-        dateFin: fetchedLeaveData.dateFin.split('T')[0],
-        dateDemande: fetchedLeaveData.dateDemande.split('T')[0]
-      });
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching leave data:', error);
-      setError(error.message);
-      setLoading(false);
-    }
-  };
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await axios.get('http://localhost:3001/api/employee');
-      setEmployees(response.data);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-    }
-  };
+    api.get(`/leave/${id}`)
+      .then(({ data }) => setLeaveData({
+        type: data.type,
+        statut: data.statut,
+        employe: data.employe,
+        dateDebut: toInputDate(data.dateDebut),
+        dateFin: toInputDate(data.dateFin),
+        dateDemande: toInputDate(data.dateDemande),
+      }))
+      .catch((err) => setError(errorMessage(err)));
+  }, [id]);
 
   const handleSub = async (e) => {
     e.preventDefault();
+    setError('');
     try {
-      await axios.put(`http://localhost:3001/api/leave/${id}`, leaveData);
-      console.log('Response:', leaveData);
+      await api.put(`/leave/${id}`, leaveData);
       navigate('/leave');
-    } catch (error) {
-      console.error('Something went wrong!', error);
-      setError(error.message);
+    } catch (err) {
+      setError(errorMessage(err));
     }
   };
 
-  const handleChange = (e) => {
-    setLeaveData({ ...leaveData, [e.target.name]: e.target.value });
-  };
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const handleChange = (e) => setLeaveData({ ...leaveData, [e.target.name]: e.target.value });
 
   return (
     <div>
       <h2>Modifier une demande de congé</h2>
-      <form onSubmit={handleSub}>
-        <label>
-          Type:
-          <input type="text" name="type" value={leaveData.type} onChange={handleChange} />
-        </label>
-        <label>
-          Date de début:
-          <input type="date" name="dateDebut" value={leaveData.dateDebut} onChange={handleChange} />
-        </label>
-        <label>
-          Date de fin:
-          <input type="date" name="dateFin" value={leaveData.dateFin} onChange={handleChange} />
-        </label>
-        <label>
-          Statut:
-          <input type="text" name="statut" value={leaveData.statut} onChange={handleChange} />
-        </label>
-        <label>
-          Employé:
-          <select name="employe" value={leaveData.employe} onChange={handleChange}>
-            {employees.map(employee => (
-              <option key={employee._id} value={employee._id}>
-                {employee.nom} {employee.prenom}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Date de demande:
-          <input type="date" name="dateDemande" value={leaveData.dateDemande} onChange={handleChange} />
-        </label>
-
-        <button type="submit">Modifier</button>
-      </form>
+      <div className="card form-card">
+        <Alert>{error}</Alert>
+        {!leaveData ? (!error && <p>Chargement…</p>) : (
+          <form onSubmit={handleSub}>
+            <label>Employé<EmployeeSelect value={leaveData.employe} onChange={handleChange} /></label>
+            <label>Type<input type="text" name="type" value={leaveData.type} onChange={handleChange} required /></label>
+            <label>Date de début<input type="date" name="dateDebut" value={leaveData.dateDebut} onChange={handleChange} required /></label>
+            <label>Date de fin<input type="date" name="dateFin" value={leaveData.dateFin} min={leaveData.dateDebut || undefined} onChange={handleChange} required /></label>
+            <label>
+              Statut
+              <select name="statut" value={leaveData.statut} onChange={handleChange}>
+                {STATUTS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label>Date de demande<input type="date" name="dateDemande" value={leaveData.dateDemande} onChange={handleChange} /></label>
+            <div className="form-actions">
+              <Link to="/leave" className="button-link btn-secondary">Annuler</Link>
+              <button type="submit">Enregistrer</button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 };
